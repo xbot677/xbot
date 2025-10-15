@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Welcome, {{ current_user.username }}!</h1>
+    <p>Manage your Telegram groups below.</p>
+
+    <hr>
+
+    <h2>Add a New Group</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('add_group') }}">
+        <label for="chat_id">Telegram Group Chat ID (must start with -):</label><br>
+        <input type="text" name="chat_id" placeholder="-100123456789" required><br><br>
+        <label for="bot_token">Your Bot's API Token:</label><br>
+        <input type="text" name="bot_token" placeholder="123456:ABC-DEF1234..." required><br><br>
+        <button type="submit">Add Group</button>
+    </form>
+
+    <hr>
+
+    <h2>Your Managed Groups</h2>
+    {% if groups %}
+        {% for group in groups %}
+            <div style="border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; border-radius: 8px;">
+                <h3>Group Chat ID: {{ group.telegram_chat_id }}</h3>
+                <a href="{{ url_for('delete_group', group_id=group.id) }}" onclick="return confirm('Are you sure?');" style="color: red;">Delete Group</a>
+                
+                <h4>Spam Keywords (deletes messages containing these words):</h4>
+                <form method="post" action="{{ url_for('add_keyword', group_id=group.id) }}" style="display: inline-block;">
+                    <input type="text" name="keyword" required>
+                    <button type="submit">Add Keyword</button>
+                </form>
+                <ul>
+                    {% for kw in group.spam_keywords %}
+                        <li>{{ kw.keyword }} <a href="{{ url_for('delete_keyword', keyword_id=kw.id) }}"> (x)</a></li>
+                    {% endfor %}
+                </ul>
+
+                <h4>Allowed Usernames (allows @mentions of these users):</h4>
+                <form method="post" action="{{ url_for('add_username', group_id=group.id) }}" style="display: inline-block;">
+                    <input type="text" name="username" placeholder="without @" required>
+                    <button type="submit">Add Username</button>
+                </form>
+                <ul>
+                    {% for user in group.allowed_usernames %}
+                        <li>{{ user.username }} <a href="{{ url_for('delete_username', username_id=user.id) }}"> (x)</a></li>
+                    {% endfor %}
+                </ul>
+
+                <h4>Allowed Website Domains (allows links from these sites):</h4>
+                <form method="post" action="{{ url_for('add_domain', group_id=group.id) }}" style="display: inline-block;">
+                    <input type="text" name="domain" placeholder="example.com" required>
+                    <button type="submit">Add Domain</button>
+                </form>
+                <ul>
+                    {% for domain in group.allowed_domains %}
+                        <li>{{ domain.domain }} <a href="{{ url_for('delete_domain', domain_id=domain.id) }}"> (x)</a></li>
+                    {% endfor %}
+                </ul>
+
+                <h4>Authorized User IDs (exempt from all rules):</h4>
+                <form method="post" action="{{ url_for('add_authorized_user', group_id=group.id) }}" style="display: inline-block;">
+                    <input type="text" name="user_id" placeholder="123456789" required>
+                    <button type="submit">Add User ID</button>
+                </form>
+                <ul>
+                    {% for user in group.authorized_users %}
+                        <li>{{ user.user_id }} <a href="{{ url_for('delete_authorized_user', user_id=user.id) }}"> (x)</a></li>
+                    {% endfor %}
+                </ul>
+
+                <hr style="margin-top: 1em;">
+                <h4>Export These Settings</h4>
+                <form method="post" action="{{ url_for('export_settings', source_group_id=group.id) }}">
+                    <p>Select groups to overwrite with these settings:</p>
+                    {% for target_group in groups %}
+                        {% if target_group.id != group.id %}
+                            <input type="checkbox" name="target_groups" value="{{ target_group.id }}" id="group_{{ group.id }}_{{ target_group.id }}">
+                            <label for="group_{{ group.id }}_{{ target_group.id }}">{{ target_group.telegram_chat_id }}</label><br>
+                        {% endif %}
+                    {% endfor %}
+                    <br>
+                    <button type="submit" name="action" value="copy_selected">Copy to Selected</button>
+                    <button type="submit" name="action" value="copy_all" onclick="return confirm('Are you sure you want to overwrite the settings of ALL your other groups with these? This cannot be undone.');">Copy to ALL Other Groups</button>
+                </form>
+                </div>
+        {% endfor %}
+    {% else %}
+        <p>You haven't added any groups yet. Add one above to get started!</p>
+    {% endif %}
+
+{% endblock %}
